@@ -1,31 +1,71 @@
-name: Go Build for Windows
+name: Go Build for Windows and Release
+
 on:
   # 当有代码推送到 main 分支时触发工作流
   push:
     branches:
       - main
+
 jobs:
   build:
     runs-on: windows-latest
+
     steps:
       # 检出代码到运行环境
       - name: Checkout code
         uses: actions/checkout@v3
+
       # 设置 Go 环境
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: '1.24'  # 可以根据需要调整 Go 版本
-      # 进入包含 Go 源码的目录
+
       # 进入 exe 目录并执行 go mod tidy 和 go build
       - name: Build in exe directory
         run: |
           cd exe
           go mod tidy
           go build -o xlik.exe .
-      # 上传编译好的文件作为工件
-      - name: Upload artifact
+
+      # 上传编译好的文件作为临时工件
+      - name: Upload temporary artifact
         uses: actions/upload-artifact@v4
         with:
-          name: windows-executable
+          name: xlik.exe
           path: exe/xlik.exe
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      # 下载之前上传的临时工件
+      - name: Download temporary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: xlik.exe
+
+      # 创建新的 Release
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release v${{ github.run_number }}
+          draft: false
+          prerelease: false
+
+      # 上传编译好的 exe 文件到 Release 中
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: xlik.exe
+          asset_name: xlik.exe
+          asset_content_type: application/vnd.microsoft.portable-executable
