@@ -19,6 +19,13 @@ jobs:
       # 进入包含 Go 源码的目录
       - name: Change directory
         run: cd exe
+        # 检查 go.mod 文件是否存在
+      - name: Check go.mod existence
+        run: |
+          if [ ! -f "go.mod" ]; then
+            echo "go.mod file not found in exe directory."
+            exit 1
+          fi
       # 执行 go mod tidy 整理依赖
       - name: Run go mod tidy
         run: go mod tidy
