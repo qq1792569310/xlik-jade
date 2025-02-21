@@ -1,0 +1,42 @@
+name: Go Build for Windows
+on:
+  # 当有代码推送到 main 分支时触发工作流
+  push:
+    branches:
+      - main
+  # 也可以手动触发工作流
+  workflow_dispatch:
+  jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      # 检出代码到运行环境
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 设置 Go 环境
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24'  # 可以根据需要调整 Go 版本
+
+      # 进入包含 Go 源码的目录
+      - name: Change directory
+        run: cd exe
+        
+
+      # 执行 go mod tidy 整理依赖
+      - name: Run go mod tidy
+        run: go mod tidy
+
+      # 编译适用于 Windows 的可执行文件
+      - name: Build Windows executable
+        run: go build -o xlik.exe .
+
+      # 上传编译好的文件作为工件
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-executable
+          path: exe/xlik.exe
