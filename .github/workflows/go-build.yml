@@ -27,7 +27,7 @@ jobs:
         run: go build -o xlik.exe .
       # 上传编译好的文件作为工件
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: windows-executable
           path: exe/xlik.exe
