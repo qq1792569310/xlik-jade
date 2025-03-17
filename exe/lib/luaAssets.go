@@ -99,8 +99,8 @@ func asExt(src string, set string) string {
 }
 
 // asCheck 检查资源是否未被使用，以免加载多余的资源
-func asCheck() {
-	content := codesContent()
+func (app *App) asCheck() {
+	content := app.luaAllContent()
 	check := make(map[string]int)
 	reg := regexp.MustCompile(`[一-龥，。！、（）【】；：“”《》？…]+`)
 	mcn := reg.FindAllString(content, -1)
@@ -400,16 +400,17 @@ func (app *App) asFont(data string) string {
 		}
 	}
 	data = strings.Replace(data, ".ttf", "", -1)
+	isDefault := false
 	fontFile := app.Path.Assets + "/war3mapFont/" + data + ".ttf"
 	if false == fileutil.IsExist(fontFile) {
 		pterm.Warning.Println("【字体】文件 " + data + " 不存在")
+		isDefault = true
+		fontFile = "embeds/lni/assets/fonts.ttf"
 		data = "default"
 	}
+	CopyFile(fontFile, app.BuildDstPath+"/map/fonts.ttf")
 	pterm.Info.Println("【字体】引入：" + data)
-	if data == "default" {
-		CopyFile("embeds/lni/assets/fonts.ttf", app.BuildDstPath+"/map/fonts.ttf")
-	} else {
-		CopyFile(fontFile, app.BuildDstPath+"/map/fonts.ttf")
+	if !isDefault {
 		luaFile := app.Path.Assets + "/war3mapFont/" + data + ".lua"
 		if fileutil.IsExist(luaFile) {
 			fontLua, err := fileutil.ReadFileToString(luaFile)
@@ -418,7 +419,7 @@ func (app *App) asFont(data string) string {
 			}
 			if fontLua != "" {
 				pterm.Debug.Println("【字体】载入lua配置")
-				codesIn(LuaFile{
+				luaChipsIn(LuaFile{
 					name: "projects.fonts",
 					dst:  app.BuildDstPath + "/map/projects/fonts.lua",
 					code: fontLua,
@@ -434,10 +435,16 @@ func (app *App) asFont(data string) string {
 // asLoading 载入图
 func (app *App) asLoading(data string) {
 	_ = os.Remove(app.BuildDstPath + "/resource/Framework/LoadingScreen.mdx")
-	loadingPath := app.Path.Assets + "/war3MapLoading/" + data
-	loadingFile := app.Path.Assets + "/war3MapLoading/" + data + ".tga"
+	var loadingPath string
+	var loadingFile string
+	if filepath.Ext(data) == `.tga` {
+		loadingFile = app.Path.Assets + "/war3MapLoading/" + data
+	} else {
+		loadingPath = app.Path.Assets + "/war3MapLoading/" + data
+		loadingFile = loadingPath + ".tga"
+	}
 	loaded := false
-	if fileutil.IsDir(loadingPath) {
+	if loadingPath != `` && fileutil.IsDir(loadingPath) {
 		CopyFile("embeds/lni/assets/LoadingScreenDir.mdx", app.BuildDstPath+"/resource/Framework/LoadingScreen.mdx")
 		loadingSites := []string{"pic", "bc", "bg"}
 		for _, s := range loadingSites {
@@ -469,7 +476,7 @@ func (app *App) asLoading(data string) {
 				break
 			}
 		}
-		err := FilePutContents(app.BuildDstPath+"/table/w3i.ini", strings.Join(w3ia, "\r\n"), fs.ModePerm)
+		err := fileutil.WriteStringToFile(app.BuildDstPath+"/table/w3i.ini", strings.Join(w3ia, "\r\n"), false)
 		if err != nil {
 			Panic(err)
 		}
@@ -750,11 +757,11 @@ func (app *App) asUI(data []string) []string {
 							if errl != nil {
 								Panic(errl)
 							}
-							name := app.luaTrimName(path, app.Path.Assets)
+							name := luaTrimName(path, app.Path.Assets)
 							n := strings.Replace(name, `.`, `/`, -1)
 							dst := app.BuildDstPath + "/map/" + n + ".lua"
 							code := lc
-							codesIn(LuaFile{
+							luaChipsIn(LuaFile{
 								name: name,
 								dst:  dst,
 								code: code,
@@ -769,14 +776,14 @@ func (app *App) asUI(data []string) []string {
 					uiTips += `，已引入scripts`
 				}
 				// main
-				name := app.luaTrimName(mainLua, app.Path.Assets)
+				name := luaTrimName(mainLua, app.Path.Assets)
 				n := strings.Replace(name, `.`, `/`, -1)
 				dst := app.BuildDstPath + "/map/" + n + ".lua"
 				code, err2 := fileutil.ReadFileToString(mainLua)
 				if err2 != nil {
 					Panic(err2)
 				}
-				codesIn(LuaFile{
+				luaChipsIn(LuaFile{
 					name: name,
 					dst:  dst,
 					code: code,
